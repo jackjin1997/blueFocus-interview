@@ -1,21 +1,9 @@
-/**
- * 每日监测任务
- */
-
 import { fetchComments } from "../api/mockCrawler.js";
 import { analyzeComments } from "../ai/analyzer.js";
 import { buildReportContent, buildNegativeSummary } from "../report/reportBuilder.js";
 import { listProducts, insertSnapshot, insertReport } from "../db/schema.js";
-import type { Product } from "../types.js";
-
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function dateRangeForToday(): string {
-  const s = todayStr();
-  return `${s} to ${s}`;
-}
+import { todayDateString, dateRangeForToday } from "../utils/date.js";
+import type { Product, Comment, NegativeComment, DimensionSummary } from "../types.js";
 
 export interface MonitorProductResult {
   productId: number;
@@ -26,31 +14,35 @@ export interface MonitorProductResult {
   message?: string;
 }
 
-export async function runMonitorForProduct(product: Product): Promise<MonitorProductResult> {
-  const productId = product.id;
-  const productUrl = product.product_url;
-  const productName = product.name ?? productUrl;
-
+async function fetchAndAnalyze(product: Product): Promise<{
+  comments: Comment[];
+  negativeList: NegativeComment[];
+  summaryByDimension: DimensionSummary;
+} | null> {
   const dateRange = dateRangeForToday();
   const [start, end] = dateRange.split(/\s+to\s+/i).map((s) => s.trim());
-
-  const crawlResult = await fetchComments({ product_url: productUrl, date_range: dateRange });
+  const crawlResult = await fetchComments({ product_url: product.product_url, date_range: dateRange });
   const comments = crawlResult.comments ?? [];
-
-  if (comments.length === 0) {
-    return { productId, snapshotId: null, reportId: null, negativeCount: 0, message: "无评论" };
-  }
-
+  if (comments.length === 0) return null;
   const { negativeList, summaryByDimension } = await analyzeComments(comments);
+  return { comments, negativeList, summaryByDimension };
+}
 
-  const snapshotId = insertSnapshot(productId, start, end, comments.length, { comments });
-
-  const reportDate = todayStr();
+function persistMonitorResult(
+  product: Product,
+  comments: Comment[],
+  negativeList: NegativeComment[],
+  summaryByDimension: DimensionSummary
+): { snapshotId: number; reportId: number } {
+  const dateRange = dateRangeForToday();
+  const [start, end] = dateRange.split(/\s+to\s+/i).map((s) => s.trim());
+  const reportDate = todayDateString();
+  const productName = product.name ?? product.product_url;
+  const snapshotId = insertSnapshot(product.id, start, end, comments.length, { comments });
   const negativeSummary = buildNegativeSummary(negativeList);
-  const content = buildReportContent(reportDate, productName, productUrl, negativeList, summaryByDimension);
-
+  const content = buildReportContent(reportDate, productName, product.product_url, negativeList, summaryByDimension);
   const reportId = insertReport(
-    productId,
+    product.id,
     snapshotId,
     reportDate,
     negativeList.length,
@@ -58,9 +50,18 @@ export async function runMonitorForProduct(product: Product): Promise<MonitorPro
     summaryByDimension,
     content
   );
+  return { snapshotId, reportId };
+}
 
+export async function runMonitorForProduct(product: Product): Promise<MonitorProductResult> {
+  const analyzed = await fetchAndAnalyze(product);
+  if (!analyzed) {
+    return { productId: product.id, snapshotId: null, reportId: null, negativeCount: 0, message: "无评论" };
+  }
+  const { comments, negativeList, summaryByDimension } = analyzed;
+  const { snapshotId, reportId } = persistMonitorResult(product, comments, negativeList, summaryByDimension);
   return {
-    productId,
+    productId: product.id,
     snapshotId,
     reportId,
     negativeCount: negativeList.length,
@@ -81,7 +82,6 @@ export interface DailyMonitorResultItem {
 export async function runDailyMonitor(): Promise<DailyMonitorResultItem[]> {
   const products = listProducts();
   const results: DailyMonitorResultItem[] = [];
-
   for (const product of products) {
     try {
       const r = await runMonitorForProduct(product);
@@ -94,6 +94,5 @@ export async function runDailyMonitor(): Promise<DailyMonitorResultItem[]> {
       });
     }
   }
-
   return results;
 }

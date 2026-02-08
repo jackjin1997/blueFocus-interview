@@ -3,6 +3,7 @@
  */
 
 import type { Comment } from "../types.js";
+import { BATCH_SIZE } from "../constants.js";
 
 export const SYSTEM_PROMPT = `你是一个电商评论分析助手。你的任务是对用户提供的商品评论进行：
 1. 情感判断：对每条评论判断为 正面 / 负面 / 中性。
@@ -23,7 +24,7 @@ export const SYSTEM_PROMPT = `你是一个电商评论分析助手。你的任�
 
 export function buildBatchCommentPrompt(comments: Comment[]): string {
   const list = comments
-    .slice(0, 50)
+    .slice(0, BATCH_SIZE)
     .map((c, i) => `[${i + 1}] (评分:${c.rating}) ${c.comment_text}`)
     .join("\n");
   return `请对以下电商评论逐条分析情感并提取负面问题维度。每条评论已标注 [序号] 和 评分。

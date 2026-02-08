@@ -1,28 +1,25 @@
-/**
- * 存储层：JSON 文件（无需原生编译，替代 better-sqlite3）
- * 数据文件：data/products.json, data/snapshots.json, data/reports.json
- */
-
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import type { Product } from "../types.js";
+import { now, parseDate } from "../utils/date.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "../../data");
+const PRODUCTS_FILE = join(DATA_DIR, "products.json");
+const SNAPSHOTS_FILE = join(DATA_DIR, "snapshots.json");
+const REPORTS_FILE = join(DATA_DIR, "reports.json");
 
 function ensureDataDir(): void {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const PRODUCTS_FILE = join(DATA_DIR, "products.json");
-const SNAPSHOTS_FILE = join(DATA_DIR, "snapshots.json");
-const REPORTS_FILE = join(DATA_DIR, "reports.json");
-
 interface ProductsStore {
   nextId: number;
   items: Product[];
 }
+
+const DEFAULT_PRODUCTS_STORE: ProductsStore = { nextId: 1, items: [] };
 
 interface SnapshotRow {
   id: number;
@@ -56,6 +53,9 @@ interface ReportsStore {
   items: ReportRowStore[];
 }
 
+const DEFAULT_SNAPSHOTS_STORE: SnapshotsStore = { nextId: 1, items: [] };
+const DEFAULT_REPORTS_STORE: ReportsStore = { nextId: 1, items: [] };
+
 function loadJson<T>(path: string, defaultVal: T): T {
   ensureDataDir();
   if (!existsSync(path)) return defaultVal;
@@ -71,11 +71,6 @@ function saveJson(path: string, data: unknown): void {
   writeFileSync(path, JSON.stringify(data, null, 0), "utf-8");
 }
 
-function now(): string {
-  return new Date().toISOString().replace("T", " ").slice(0, 19);
-}
-
-/** 初始化存储目录（启动时调用一次） */
 export function initStorage(): void {
   ensureDataDir();
 }
@@ -101,12 +96,12 @@ export interface TrendRow {
 }
 
 export function listProducts(): Product[] {
-  const store = loadJson<ProductsStore>(PRODUCTS_FILE, { nextId: 1, items: [] });
+  const store = loadJson<ProductsStore>(PRODUCTS_FILE, DEFAULT_PRODUCTS_STORE);
   return [...store.items].sort((a, b) => a.id - b.id);
 }
 
 export function addProduct(productUrl: string, name: string | null): number {
-  const store = loadJson<ProductsStore>(PRODUCTS_FILE, { nextId: 1, items: [] });
+  const store = loadJson<ProductsStore>(PRODUCTS_FILE, DEFAULT_PRODUCTS_STORE);
   if (store.items.some((p) => p.product_url === productUrl)) {
     throw new Error("UNIQUE constraint failed: products.product_url");
   }
@@ -122,14 +117,14 @@ export function addProduct(productUrl: string, name: string | null): number {
 }
 
 export function getProduct(id: number): Product | undefined {
-  const store = loadJson<ProductsStore>(PRODUCTS_FILE, { nextId: 1, items: [] });
+  const store = loadJson<ProductsStore>(PRODUCTS_FILE, DEFAULT_PRODUCTS_STORE);
   return store.items.find((p) => p.id === id);
 }
 
 export function deleteProduct(id: number): void {
-  const pStore = loadJson<ProductsStore>(PRODUCTS_FILE, { nextId: 1, items: [] });
-  const sStore = loadJson<SnapshotsStore>(SNAPSHOTS_FILE, { nextId: 1, items: [] });
-  const rStore = loadJson<ReportsStore>(REPORTS_FILE, { nextId: 1, items: [] });
+  const pStore = loadJson<ProductsStore>(PRODUCTS_FILE, DEFAULT_PRODUCTS_STORE);
+  const sStore = loadJson<SnapshotsStore>(SNAPSHOTS_FILE, DEFAULT_SNAPSHOTS_STORE);
+  const rStore = loadJson<ReportsStore>(REPORTS_FILE, DEFAULT_REPORTS_STORE);
   rStore.items = rStore.items.filter((r) => r.product_id !== id);
   sStore.items = sStore.items.filter((s) => s.product_id !== id);
   pStore.items = pStore.items.filter((p) => p.id !== id);
@@ -145,7 +140,7 @@ export function insertSnapshot(
   commentCount: number,
   rawJson: unknown
 ): number {
-  const store = loadJson<SnapshotsStore>(SNAPSHOTS_FILE, { nextId: 1, items: [] });
+  const store = loadJson<SnapshotsStore>(SNAPSHOTS_FILE, DEFAULT_SNAPSHOTS_STORE);
   const id = store.nextId++;
   store.items.push({
     id,
@@ -161,7 +156,7 @@ export function insertSnapshot(
 }
 
 export function getSnapshot(id: number): Record<string, unknown> | undefined {
-  const store = loadJson<SnapshotsStore>(SNAPSHOTS_FILE, { nextId: 1, items: [] });
+  const store = loadJson<SnapshotsStore>(SNAPSHOTS_FILE, DEFAULT_SNAPSHOTS_STORE);
   const row = store.items.find((s) => s.id === id);
   return row as unknown as Record<string, unknown> | undefined;
 }
@@ -175,7 +170,7 @@ export function insertReport(
   dimensionSummary: Record<string, number> | string | null,
   content: string | null
 ): number {
-  const store = loadJson<ReportsStore>(REPORTS_FILE, { nextId: 1, items: [] });
+  const store = loadJson<ReportsStore>(REPORTS_FILE, DEFAULT_REPORTS_STORE);
   const id = store.nextId++;
   const dimStr = dimensionSummary == null ? null : typeof dimensionSummary === "string" ? dimensionSummary : JSON.stringify(dimensionSummary);
   store.items.push({
@@ -193,31 +188,40 @@ export function insertReport(
   return id;
 }
 
+function productMapFrom(products: Product[]): Map<number, Product> {
+  return new Map(products.map((p) => [p.id, p]));
+}
+
+function enrichReportWithProduct(
+  row: ReportRowStore,
+  product: Product | undefined
+): ReportRow {
+  return {
+    ...row,
+    product_url: product?.product_url ?? "",
+    product_name: product?.name ?? null,
+  };
+}
+
 export function listReports(productId: number | null, limit: number): ReportRow[] {
-  const rStore = loadJson<ReportsStore>(REPORTS_FILE, { nextId: 1, items: [] });
-  const pStore = loadJson<ProductsStore>(PRODUCTS_FILE, { nextId: 1, items: [] });
-  const byId = new Map(pStore.items.map((p) => [p.id, p]));
-  let rows: ReportRow[] = rStore.items.map((r) => ({
-    ...r,
-    product_url: byId.get(r.product_id)?.product_url ?? "",
-    product_name: byId.get(r.product_id)?.name ?? null,
-  }));
+  const rStore = loadJson<ReportsStore>(REPORTS_FILE, DEFAULT_REPORTS_STORE);
+  const pStore = loadJson<ProductsStore>(PRODUCTS_FILE, DEFAULT_PRODUCTS_STORE);
+  const byId = productMapFrom(pStore.items);
+  let rows: ReportRow[] = rStore.items.map((r) =>
+    enrichReportWithProduct(r, byId.get(r.product_id))
+  );
   if (productId != null) rows = rows.filter((r) => r.product_id === productId);
   rows.sort((a, b) => (b.report_date + String(b.id)).localeCompare(a.report_date + String(a.id)));
   return rows.slice(0, limit);
 }
 
 export function getReport(id: number): (ReportRow & { dimension_summary?: Record<string, number> }) | undefined {
-  const rStore = loadJson<ReportsStore>(REPORTS_FILE, { nextId: 1, items: [] });
-  const pStore = loadJson<ProductsStore>(PRODUCTS_FILE, { nextId: 1, items: [] });
+  const rStore = loadJson<ReportsStore>(REPORTS_FILE, DEFAULT_REPORTS_STORE);
+  const pStore = loadJson<ProductsStore>(PRODUCTS_FILE, DEFAULT_PRODUCTS_STORE);
   const row = rStore.items.find((r) => r.id === id);
   if (!row) return undefined;
   const product = pStore.items.find((p) => p.id === row.product_id);
-  const out: ReportRow & { dimension_summary?: Record<string, number> } = {
-    ...row,
-    product_url: product?.product_url ?? "",
-    product_name: product?.name ?? null,
-  };
+  const out: ReportRow & { dimension_summary?: Record<string, number> } = enrichReportWithProduct(row, product);
   if (row.dimension_summary) {
     try {
       out.dimension_summary = JSON.parse(row.dimension_summary) as Record<string, number>;
@@ -228,15 +232,10 @@ export function getReport(id: number): (ReportRow & { dimension_summary?: Record
   return out;
 }
 
-function parseDate(s: string): Date {
-  const d = new Date(s.slice(0, 10));
-  return isNaN(d.getTime()) ? new Date(0) : d;
-}
-
 export function getTrends(productId: number | null, days: number): TrendRow[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
-  const rStore = loadJson<ReportsStore>(REPORTS_FILE, { nextId: 1, items: [] });
+  const rStore = loadJson<ReportsStore>(REPORTS_FILE, DEFAULT_REPORTS_STORE);
   let items = rStore.items.filter((r) => parseDate(r.report_date) >= cutoff);
   if (productId != null) items = items.filter((r) => r.product_id === productId);
   const byDate = new Map<string, { negative_count: number; report_count: number }>();
