@@ -1,202 +1,307 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>电商负面评论监测</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; }
-    h1 { margin-top: 0; }
-    section { margin-bottom: 2rem; }
-    label { display: block; margin-bottom: 0.25rem; }
-    input[type="url"], input[type="text"] { width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; }
-    button { padding: 0.5rem 1rem; cursor: pointer; margin-right: 0.5rem; margin-bottom: 0.5rem; }
-    button.primary { background: #2563eb; color: #fff; border: none; border-radius: 4px; }
-    button.danger { background: #dc2626; color: #fff; border: none; border-radius: 4px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
-    th { background: #f5f5f5; }
-    .error { color: #b91c1c; }
-    .muted { color: #6b7280; font-size: 0.9rem; }
-    pre { background: #f5f5f5; padding: 1rem; overflow: auto; white-space: pre-wrap; }
-    #reportContent { max-height: 400px; overflow: auto; }
-  </style>
-</head>
-<body>
-  <h1>电商负面评论监测</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>电商负面评论监测</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      section {
+        margin-bottom: 2rem;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      input[type="url"],
+      input[type="text"] {
+        width: 100%;
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      button.primary {
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+      }
+      button.danger {
+        background: #dc2626;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 0.5rem;
+        text-align: left;
+      }
+      th {
+        background: #f5f5f5;
+      }
+      .error {
+        color: #b91c1c;
+      }
+      .muted {
+        color: #6b7280;
+        font-size: 0.9rem;
+      }
+      pre {
+        background: #f5f5f5;
+        padding: 1rem;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+      #reportContent {
+        max-height: 400px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>电商负面评论监测</h1>
 
-  <section>
-    <h2>监测商品</h2>
-    <label>商品链接</label>
-    <input type="url" id="productUrl" placeholder="https://example.com/product/1" />
-    <label>名称（选填）</label>
-    <input type="text" id="productName" placeholder="商品名称" />
-    <button class="primary" id="addProduct">添加监测</button>
-    <div id="productList"></div>
-  </section>
+    <section>
+      <h2>监测商品</h2>
+      <label>商品链接</label>
+      <input type="url" id="productUrl" placeholder="https://example.com/product/1" />
+      <label>名称（选填）</label>
+      <input type="text" id="productName" placeholder="商品名称" />
+      <button class="primary" id="addProduct">添加监测</button>
+      <div id="productList"></div>
+    </section>
 
-  <section>
-    <h2>立即监测</h2>
-    <p class="muted">对已添加的商品执行一次评论拉取与分析（无需等待每日定时）。</p>
-    <button class="primary" id="runMonitor">执行一次监测</button>
-    <div id="monitorResult"></div>
-  </section>
+    <section>
+      <h2>立即监测</h2>
+      <p class="muted">对已添加的商品执行一次评论拉取与分析（无需等待每日定时）。</p>
+      <button class="primary" id="runMonitor">执行一次监测</button>
+      <div id="monitorResult"></div>
+    </section>
 
-  <section>
-    <h2>报告列表</h2>
-    <label>按商品筛选</label>
-    <select id="reportProductFilter">
-      <option value="">全部</option>
-    </select>
-    <div id="reportList"></div>
-  </section>
+    <section>
+      <h2>报告列表</h2>
+      <label>按商品筛选</label>
+      <select id="reportProductFilter">
+        <option value="">全部</option>
+      </select>
+      <div id="reportList"></div>
+    </section>
 
-  <section>
-    <h2>报告详情</h2>
-    <div id="reportDetail"></div>
-  </section>
+    <section>
+      <h2>报告详情</h2>
+      <div id="reportDetail"></div>
+    </section>
 
-  <section>
-    <h2>趋势</h2>
-    <select id="trendProductFilter">
-      <option value="">全部商品</option>
-    </select>
-    <div id="trendList"></div>
-  </section>
+    <section>
+      <h2>趋势</h2>
+      <select id="trendProductFilter">
+        <option value="">全部商品</option>
+      </select>
+      <div id="trendList"></div>
+    </section>
 
-  <script>
-    const API = "/api";
+    <script>
+      const API = "/api";
 
-    async function getProducts() {
-      const r = await fetch(API + "/products");
-      const j = await r.json();
-      return j.success ? j.data : [];
-    }
+      async function getProducts() {
+        const r = await fetch(API + "/products");
+        const j = await r.json();
+        return j.success ? j.data : [];
+      }
 
-    async function getReports(productId) {
-      const url = productId ? API + "/reports?product_id=" + productId : API + "/reports";
-      const r = await fetch(url);
-      const j = await r.json();
-      return j.success ? j.data : [];
-    }
+      async function getReports(productId) {
+        const url = productId ? API + "/reports?product_id=" + productId : API + "/reports";
+        const r = await fetch(url);
+        const j = await r.json();
+        return j.success ? j.data : [];
+      }
 
-    async function getTrends(productId) {
-      const url = productId ? API + "/trends?product_id=" + productId + "&days=30" : API + "/trends?days=30";
-      const r = await fetch(url);
-      const j = await r.json();
-      return j.success ? j.data : [];
-    }
+      async function getTrends(productId) {
+        const url = productId ? API + "/trends?product_id=" + productId + "&days=30" : API + "/trends?days=30";
+        const r = await fetch(url);
+        const j = await r.json();
+        return j.success ? j.data : [];
+      }
 
-    function renderProductList() {
-      getProducts().then(products => {
-        const list = document.getElementById("productList");
-        const filterReport = document.getElementById("reportProductFilter");
-        const filterTrend = document.getElementById("trendProductFilter");
-        filterReport.innerHTML = "<option value=\"\">全部</option>" + products.map(p => `<option value="${p.id}">${p.name || p.product_url}</option>`).join("");
-        filterTrend.innerHTML = "<option value=\"\">全部商品</option>" + products.map(p => `<option value="${p.id}">${p.name || p.product_url}</option>`).join("");
-        if (products.length === 0) {
-          list.innerHTML = "<p class=\"muted\">暂无监测商品，请添加商品链接。</p>";
+      function renderProductList() {
+        getProducts().then((products) => {
+          const list = document.getElementById("productList");
+          const filterReport = document.getElementById("reportProductFilter");
+          const filterTrend = document.getElementById("trendProductFilter");
+          filterReport.innerHTML =
+            '<option value="">全部</option>' +
+            products.map((p) => `<option value="${p.id}">${p.name || p.product_url}</option>`).join("");
+          filterTrend.innerHTML =
+            '<option value="">全部商品</option>' +
+            products.map((p) => `<option value="${p.id}">${p.name || p.product_url}</option>`).join("");
+          if (products.length === 0) {
+            list.innerHTML = '<p class="muted">暂无监测商品，请添加商品链接。</p>';
+            return;
+          }
+          list.innerHTML =
+            "<table><thead><tr><th>ID</th><th>链接/名称</th><th>操作</th></tr></thead><tbody>" +
+            products
+              .map(
+                (p) =>
+                  `<tr><td>${p.id}</td><td>${p.name || p.product_url}</td><td><button class="danger" data-id="${p.id}">删除</button></td></tr>`
+              )
+              .join("") +
+            "</tbody></table>";
+          list.querySelectorAll("button.danger").forEach((btn) => {
+            btn.onclick = () => deleteProduct(btn.dataset.id);
+          });
+        });
+      }
+
+      async function deleteProduct(id) {
+        if (!confirm("确定删除该监测商品？")) return;
+        await fetch(API + "/products/" + id, { method: "DELETE" });
+        renderProductList();
+        renderReportList();
+        renderTrendList();
+      }
+
+      document.getElementById("addProduct").onclick = async () => {
+        const url = document.getElementById("productUrl").value.trim();
+        const name = document.getElementById("productName").value.trim();
+        if (!url) {
+          alert("请填写商品链接");
           return;
         }
-        list.innerHTML = "<table><thead><tr><th>ID</th><th>链接/名称</th><th>操作</th></tr></thead><tbody>" +
-          products.map(p => `<tr><td>${p.id}</td><td>${p.name || p.product_url}</td><td><button class="danger" data-id="${p.id}">删除</button></td></tr>`).join("") +
-          "</tbody></table>";
-        list.querySelectorAll("button.danger").forEach(btn => {
-          btn.onclick = () => deleteProduct(btn.dataset.id);
+        const r = await fetch(API + "/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ product_url: url, name: name || null }),
         });
-      });
-    }
+        const j = await r.json();
+        if (!j.success) {
+          alert(j.error || "添加失败");
+          return;
+        }
+        document.getElementById("productUrl").value = "";
+        document.getElementById("productName").value = "";
+        renderProductList();
+        renderReportList();
+        renderTrendList();
+      };
 
-    async function deleteProduct(id) {
-      if (!confirm("确定删除该监测商品？")) return;
-      await fetch(API + "/products/" + id, { method: "DELETE" });
+      document.getElementById("runMonitor").onclick = async () => {
+        const el = document.getElementById("monitorResult");
+        el.innerHTML = "<p>执行中…</p>";
+        const r = await fetch(API + "/monitor/run", { method: "POST" });
+        const j = await r.json();
+        if (!j.success) {
+          el.innerHTML = '<p class="error">' + (j.error || "失败") + "</p>";
+          return;
+        }
+        el.innerHTML = "<pre>" + JSON.stringify(j.data, null, 2) + "</pre>";
+        renderReportList();
+        renderTrendList();
+      };
+
+      function renderReportList() {
+        const productId = document.getElementById("reportProductFilter").value || null;
+        getReports(productId).then((rows) => {
+          const list = document.getElementById("reportList");
+          if (rows.length === 0) {
+            list.innerHTML = '<p class="muted">暂无报告。请先添加商品并执行一次监测。</p>';
+            return;
+          }
+          list.innerHTML =
+            "<table><thead><tr><th>ID</th><th>日期</th><th>商品</th><th>负面数</th><th>操作</th></tr></thead><tbody>" +
+            rows
+              .map(
+                (r) =>
+                  `<tr><td>${r.id}</td><td>${r.report_date}</td><td>${r.product_name || r.product_url}</td><td>${r.negative_count}</td><td><button class="primary" data-id="${r.id}">查看</button></td></tr>`
+              )
+              .join("") +
+            "</tbody></table>";
+          list.querySelectorAll("button.primary").forEach((btn) => {
+            btn.onclick = () => showReport(btn.dataset.id);
+          });
+        });
+      }
+
+      async function showReport(id) {
+        const r = await fetch(API + "/reports/" + id);
+        const j = await r.json();
+        const detail = document.getElementById("reportDetail");
+        if (!j.success || !j.data) {
+          detail.innerHTML = '<p class="error">加载失败</p>';
+          return;
+        }
+        const d = j.data;
+        detail.innerHTML =
+          "<h3>报告 #" +
+          d.id +
+          " " +
+          d.report_date +
+          "</h3>" +
+          "<p><strong>商品：</strong>" +
+          (d.product_name || d.product_url) +
+          "</p>" +
+          "<p><strong>负面评论数：</strong>" +
+          d.negative_count +
+          "</p>" +
+          (d.negative_summary ? "<p><strong>负面摘要：</strong>" + d.negative_summary + "</p>" : "") +
+          (d.dimension_summary && typeof d.dimension_summary === "object"
+            ? "<p><strong>维度分布：</strong>" + JSON.stringify(d.dimension_summary) + "</p>"
+            : "") +
+          (d.content ? '<div id="reportContent"><pre>' + escapeHtml(d.content) + "</pre></div>" : "");
+      }
+
+      function escapeHtml(s) {
+        const div = document.createElement("div");
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      document.getElementById("reportProductFilter").onchange = renderReportList;
+
+      function renderTrendList() {
+        const productId = document.getElementById("trendProductFilter").value || null;
+        getTrends(productId).then((rows) => {
+          const list = document.getElementById("trendList");
+          if (rows.length === 0) {
+            list.innerHTML = '<p class="muted">暂无趋势数据。</p>';
+            return;
+          }
+          list.innerHTML =
+            "<table><thead><tr><th>日期</th><th>负面数</th><th>报告数</th></tr></thead><tbody>" +
+            rows
+              .map((r) => `<tr><td>${r.report_date}</td><td>${r.negative_count}</td><td>${r.report_count}</td></tr>`)
+              .join("") +
+            "</tbody></table>";
+        });
+      }
+
+      document.getElementById("trendProductFilter").onchange = renderTrendList;
+
       renderProductList();
       renderReportList();
       renderTrendList();
-    }
-
-    document.getElementById("addProduct").onclick = async () => {
-      const url = document.getElementById("productUrl").value.trim();
-      const name = document.getElementById("productName").value.trim();
-      if (!url) { alert("请填写商品链接"); return; }
-      const r = await fetch(API + "/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_url: url, name: name || null })
-      });
-      const j = await r.json();
-      if (!j.success) { alert(j.error || "添加失败"); return; }
-      document.getElementById("productUrl").value = "";
-      document.getElementById("productName").value = "";
-      renderProductList();
-      renderReportList();
-      renderTrendList();
-    };
-
-    document.getElementById("runMonitor").onclick = async () => {
-      const el = document.getElementById("monitorResult");
-      el.innerHTML = "<p>执行中…</p>";
-      const r = await fetch(API + "/monitor/run", { method: "POST" });
-      const j = await r.json();
-      if (!j.success) { el.innerHTML = "<p class=\"error\">" + (j.error || "失败") + "</p>"; return; }
-      el.innerHTML = "<pre>" + JSON.stringify(j.data, null, 2) + "</pre>";
-      renderReportList();
-      renderTrendList();
-    };
-
-    function renderReportList() {
-      const productId = document.getElementById("reportProductFilter").value || null;
-      getReports(productId).then(rows => {
-        const list = document.getElementById("reportList");
-        if (rows.length === 0) { list.innerHTML = "<p class=\"muted\">暂无报告。请先添加商品并执行一次监测。</p>"; return; }
-        list.innerHTML = "<table><thead><tr><th>ID</th><th>日期</th><th>商品</th><th>负面数</th><th>操作</th></tr></thead><tbody>" +
-          rows.map(r => `<tr><td>${r.id}</td><td>${r.report_date}</td><td>${r.product_name || r.product_url}</td><td>${r.negative_count}</td><td><button class="primary" data-id="${r.id}">查看</button></td></tr>`).join("") +
-          "</tbody></table>";
-        list.querySelectorAll("button.primary").forEach(btn => {
-          btn.onclick = () => showReport(btn.dataset.id);
-        });
-      });
-    }
-
-    async function showReport(id) {
-      const r = await fetch(API + "/reports/" + id);
-      const j = await r.json();
-      const detail = document.getElementById("reportDetail");
-      if (!j.success || !j.data) { detail.innerHTML = "<p class=\"error\">加载失败</p>"; return; }
-      const d = j.data;
-      detail.innerHTML = "<h3>报告 #" + d.id + " " + d.report_date + "</h3>" +
-        "<p><strong>商品：</strong>" + (d.product_name || d.product_url) + "</p>" +
-        "<p><strong>负面评论数：</strong>" + d.negative_count + "</p>" +
-        (d.negative_summary ? "<p><strong>负面摘要：</strong>" + d.negative_summary + "</p>" : "") +
-        (d.dimension_summary && typeof d.dimension_summary === "object" ? "<p><strong>维度分布：</strong>" + JSON.stringify(d.dimension_summary) + "</p>" : "") +
-        (d.content ? "<div id=\"reportContent\"><pre>" + escapeHtml(d.content) + "</pre></div>" : "");
-    }
-
-    function escapeHtml(s) {
-      const div = document.createElement("div");
-      div.textContent = s;
-      return div.innerHTML;
-    }
-
-    document.getElementById("reportProductFilter").onchange = renderReportList;
-
-    function renderTrendList() {
-      const productId = document.getElementById("trendProductFilter").value || null;
-      getTrends(productId).then(rows => {
-        const list = document.getElementById("trendList");
-        if (rows.length === 0) { list.innerHTML = "<p class=\"muted\">暂无趋势数据。</p>"; return; }
-        list.innerHTML = "<table><thead><tr><th>日期</th><th>负面数</th><th>报告数</th></tr></thead><tbody>" +
-          rows.map(r => `<tr><td>${r.report_date}</td><td>${r.negative_count}</td><td>${r.report_count}</td></tr>`).join("") +
-          "</tbody></table>";
-      });
-    }
-
-    document.getElementById("trendProductFilter").onchange = renderTrendList;
-
-    renderProductList();
-    renderReportList();
-    renderTrendList();
-  </script>
-</body>
+    </script>
+  </body>
 </html>

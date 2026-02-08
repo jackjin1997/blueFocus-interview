@@ -20,7 +20,6 @@ async function fetchAndAnalyze(product: Product): Promise<{
   summaryByDimension: DimensionSummary;
 } | null> {
   const dateRange = dateRangeForToday();
-  const [start, end] = dateRange.split(/\s+to\s+/i).map((s) => s.trim());
   const crawlResult = await fetchComments({ product_url: product.product_url, date_range: dateRange });
   const comments = crawlResult.comments ?? [];
   if (comments.length === 0) return null;

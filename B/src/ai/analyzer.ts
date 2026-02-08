@@ -18,7 +18,12 @@ function getModel(): ChatOpenAI {
 
 function getTextFromLLMResponse(content: unknown): string {
   if (typeof content === "string") return content;
-  if (Array.isArray(content) && content[0] != null && "text" in content[0] && typeof (content[0] as { text: string }).text === "string") {
+  if (
+    Array.isArray(content) &&
+    content[0] != null &&
+    "text" in content[0] &&
+    typeof (content[0] as { text: string }).text === "string"
+  ) {
     return (content[0] as { text: string }).text;
   }
   return "";

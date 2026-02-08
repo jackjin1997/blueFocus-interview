@@ -1,14 +1,19 @@
 {
-  "name": "blufocus-b-negative-comment-monitor",
+  "name": "blufocus-review-monitor",
   "version": "1.0.0",
-  "description": "电商负面评论监测AI应用",
+  "description": "BluFocus 口碑监测：电商负面评论监测",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
     "build:esbuild": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --packages=external",
     "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky"
   },
   "packageManager": "pnpm@9.14.2",
   "engines": {
@@ -28,6 +33,21 @@
     "@types/node-cron": "^3.0.11",
     "esbuild": "^0.24.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "prettier": "^3.4.2",
+    "eslint": "^9.15.0",
+    "@eslint/js": "^9.15.0",
+    "typescript-eslint": "^8.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0"
+  },
+  "lint-staged": {
+    "*.{ts,js,json}": [
+      "prettier --write",
+      "eslint --fix"
+    ]
   }
 }

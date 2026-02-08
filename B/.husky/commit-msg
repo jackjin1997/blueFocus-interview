@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+[ -d B ] && cd B
+pnpm exec commitlint --edit "$1"

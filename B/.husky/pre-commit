@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+[ -d B ] && cd B
+pnpm exec node scripts/check-secrets.mjs
+pnpm exec lint-staged

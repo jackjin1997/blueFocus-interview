@@ -1,6 +1,8 @@
-# 电商负面评论监测 AI 应用（B）
+# BluFocus · Review Monitor（口碑监测）
 
-基于 **LangChain 1.0** + **TypeScript** + **Fastify** 的电商负面评论监测应用：支持多商品持续监测、AI 情感分析与问题维度提取、定期报告与历史趋势查看。
+本模块为 **BluFocus** 的 **Review Monitor** 功能：电商负面评论监测。
+
+基于 **LangChain 1.0** + **TypeScript** + **Fastify**，支持多商品持续监测、AI 情感分析与问题维度提取、定期报告与历史趋势查看。
 
 ## 功能概览
 
@@ -19,7 +21,7 @@
 ### 1. 安装依赖
 
 ```bash
-cd B
+cd B   # 或从仓库根目录进入 Review Monitor 目录
 pnpm install
 ```
 
@@ -102,10 +104,21 @@ pnpm start
 | OPENAI_API_KEY | OpenAI API Key（必填） | - |
 | PORT | HTTP 端口 | 3000 |
 | CRON_DAILY | 每日监测 cron 表达式 | 0 8 * * * |
-| DATA_DIR | 数据目录 | ./data |
-| DB_PATH | SQLite 文件路径 | ./data/monitor.db |
+| DATA_DIR | 数据目录（商品/快照/报告 JSON） | ./data |
 
 Mock 评论数据来自 `data/mockComments.json`，无需配置；如需更换数据，直接替换该 JSON 文件即可（格式需符合题目协议：`comment_id, user_name, rating, comment_text, comment_time, helpful_count`）。
+
+## 开发规范与脚本
+
+- **Prettier**：`pnpm format`（格式化）、`pnpm format:check`（仅检查）。
+- **ESLint**：`pnpm lint`、`pnpm lint:fix`（仅针对 `src/` 内 TypeScript）。
+- **Git Hooks（Husky）**：若仓库根目录为 `blufocus`（B 为子目录），需在根目录执行一次以启用 hooks：
+  ```bash
+  node --input-type=module -e "import('./B/node_modules/husky/index.js').then(m=>m.default('B/.husky'))"
+  ```
+  - **pre-commit**：先执行 `scripts/check-secrets.mjs`（防止提交密钥等敏感信息），再执行 **lint-staged**（对暂存区 `*.ts,*.js,*.json` 跑 Prettier + ESLint --fix）。
+  - **commit-msg**：使用 **commitlint**（Conventional Commits），如 `feat: add api`、`fix: typo`。
+- **git-secrets**：通过 `scripts/check-secrets.mjs` 在 pre-commit 中扫描暂存文件中的 API Key、Bearer、password、私钥等模式，避免误提交。
 
 ## 设计文档
 
@@ -118,5 +131,5 @@ Mock 评论数据来自 `data/mockComments.json`，无需配置；如需更换�
 
 ## 部署说明
 
-- 本地：在 B 目录执行 `pnpm install`、`pnpm build`、`pnpm start`，通过 `http://localhost:PORT` 访问。
+- 本地：在本模块（B）目录执行 `pnpm install`、`pnpm build`、`pnpm start`，通过 `http://localhost:PORT` 访问。
 - 若部署到云主机：使用进程守护（如 pm2）或容器运行 `node dist/index.js`（需先执行 `pnpm build`），并配置 `OPENAI_API_KEY` 与 `PORT`；如需公网访问，请自行配置反向代理与 HTTPS。

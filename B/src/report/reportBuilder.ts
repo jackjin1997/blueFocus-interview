@@ -50,21 +50,12 @@ export function buildReportContent(
   negativeList: NegativeComment[],
   summaryByDimension: DimensionSummary
 ): string {
-  const header = buildReportHeader(
-    reportDate,
-    productName,
-    productUrl,
-    negativeList.length,
-    summaryByDimension
-  );
+  const header = buildReportHeader(reportDate, productName, productUrl, negativeList.length, summaryByDimension);
   const commentLines = buildNegativeCommentLines(negativeList);
   return [...header, ...commentLines].join("\n");
 }
 
-export function buildNegativeSummary(
-  negativeList: NegativeComment[],
-  maxItems = 10
-): string {
+export function buildNegativeSummary(negativeList: NegativeComment[], maxItems = 10): string {
   if (!negativeList?.length) return "本周期无负面评论。";
   const parts = negativeList.slice(0, maxItems).map((c) => {
     const text = c.comment_text.slice(0, 80);

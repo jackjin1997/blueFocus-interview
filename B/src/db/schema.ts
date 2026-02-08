@@ -172,7 +172,12 @@ export function insertReport(
 ): number {
   const store = loadJson<ReportsStore>(REPORTS_FILE, DEFAULT_REPORTS_STORE);
   const id = store.nextId++;
-  const dimStr = dimensionSummary == null ? null : typeof dimensionSummary === "string" ? dimensionSummary : JSON.stringify(dimensionSummary);
+  const dimStr =
+    dimensionSummary == null
+      ? null
+      : typeof dimensionSummary === "string"
+        ? dimensionSummary
+        : JSON.stringify(dimensionSummary);
   store.items.push({
     id,
     product_id: productId,
@@ -192,10 +197,7 @@ function productMapFrom(products: Product[]): Map<number, Product> {
   return new Map(products.map((p) => [p.id, p]));
 }
 
-function enrichReportWithProduct(
-  row: ReportRowStore,
-  product: Product | undefined
-): ReportRow {
+function enrichReportWithProduct(row: ReportRowStore, product: Product | undefined): ReportRow {
   return {
     ...row,
     product_url: product?.product_url ?? "",
@@ -207,9 +209,7 @@ export function listReports(productId: number | null, limit: number): ReportRow[
   const rStore = loadJson<ReportsStore>(REPORTS_FILE, DEFAULT_REPORTS_STORE);
   const pStore = loadJson<ProductsStore>(PRODUCTS_FILE, DEFAULT_PRODUCTS_STORE);
   const byId = productMapFrom(pStore.items);
-  let rows: ReportRow[] = rStore.items.map((r) =>
-    enrichReportWithProduct(r, byId.get(r.product_id))
-  );
+  let rows: ReportRow[] = rStore.items.map((r) => enrichReportWithProduct(r, byId.get(r.product_id)));
   if (productId != null) rows = rows.filter((r) => r.product_id === productId);
   rows.sort((a, b) => (b.report_date + String(b.id)).localeCompare(a.report_date + String(a.id)));
   return rows.slice(0, limit);
