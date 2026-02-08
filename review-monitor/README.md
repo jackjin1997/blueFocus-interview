@@ -112,6 +112,7 @@ Mock 评论数据来自 `data/mockComments.json`，无需配置；如需更换�
 
 - **Prettier**：`pnpm format`（格式化）、`pnpm format:check`（仅检查）。
 - **ESLint**：`pnpm lint`、`pnpm lint:fix`（仅针对 `src/` 内 TypeScript）。
+- **单元测试（Vitest）**：`pnpm test`（watch）、`pnpm test:run`（单次）、`pnpm test:coverage`（覆盖率）。覆盖率要求：全局 statements/lines/functions ≥ 90%，branches ≥ 85%；**src/utils 下文件须保持 100% 覆盖率**。
 - **Git Hooks（Husky）**：若仓库根目录为 `blufocus`（本模块为子目录 `review-monitor`），需在根目录执行一次以启用 hooks：
   ```bash
   node --input-type=module -e "import('./review-monitor/node_modules/husky/index.js').then(m=>m.default('review-monitor/.husky'))"

@@ -5,7 +5,7 @@ import type { Product } from "../types.js";
 import { now, parseDate } from "../utils/date.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, "../../data");
+const DATA_DIR = process.env.DATA_DIR ?? join(__dirname, "../../data");
 const PRODUCTS_FILE = join(DATA_DIR, "products.json");
 const SNAPSHOTS_FILE = join(DATA_DIR, "snapshots.json");
 const REPORTS_FILE = join(DATA_DIR, "reports.json");

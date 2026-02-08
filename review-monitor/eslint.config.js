@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 import eslintConfigPrettier from "eslint-config-prettier";
 
 export default tseslint.config(
-  { ignores: ["dist/**", "node_modules/**", "data/**", "**/*.json", "scripts/**", "*.config.js"] },
+  { ignores: ["dist/**", "node_modules/**", "data/**", "**/*.json", "scripts/**", "*.config.js", "vitest.config.ts"] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   eslintConfigPrettier,
