@@ -1,40 +1,41 @@
 /**
- * 每日监测任务：遍历已登记商品 → Mock 拉取评论 → AI 分析 → 写 snapshot + report
+ * 每日监测任务
  */
 
 import { fetchComments } from "../api/mockCrawler.js";
 import { analyzeComments } from "../ai/analyzer.js";
 import { buildReportContent, buildNegativeSummary } from "../report/reportBuilder.js";
-import {
-  getDb,
-  listProducts,
-  insertSnapshot,
-  insertReport,
-} from "../db/schema.js";
+import { listProducts, insertSnapshot, insertReport } from "../db/schema.js";
+import type { Product } from "../types.js";
 
-function todayStr() {
+function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function dateRangeForToday() {
+function dateRangeForToday(): string {
   const s = todayStr();
   return `${s} to ${s}`;
 }
 
-/**
- * 对单个商品执行一次监测：拉取 → 分析 → 落库
- */
-export async function runMonitorForProduct(product) {
-  const db = getDb();
+export interface MonitorProductResult {
+  productId: number;
+  snapshotId: number | null;
+  reportId: number | null;
+  negativeCount: number;
+  totalComments?: number;
+  message?: string;
+}
+
+export async function runMonitorForProduct(product: Product): Promise<MonitorProductResult> {
   const productId = product.id;
   const productUrl = product.product_url;
-  const productName = product.name || productUrl;
+  const productName = product.name ?? productUrl;
 
   const dateRange = dateRangeForToday();
   const [start, end] = dateRange.split(/\s+to\s+/i).map((s) => s.trim());
 
   const crawlResult = await fetchComments({ product_url: productUrl, date_range: dateRange });
-  const comments = crawlResult.comments || [];
+  const comments = crawlResult.comments ?? [];
 
   if (comments.length === 0) {
     return { productId, snapshotId: null, reportId: null, negativeCount: 0, message: "无评论" };
@@ -42,24 +43,11 @@ export async function runMonitorForProduct(product) {
 
   const { negativeList, summaryByDimension } = await analyzeComments(comments);
 
-  const snapshotId = insertSnapshot(
-    productId,
-    start,
-    end,
-    comments.length,
-    { comments },
-    db
-  );
+  const snapshotId = insertSnapshot(productId, start, end, comments.length, { comments });
 
   const reportDate = todayStr();
   const negativeSummary = buildNegativeSummary(negativeList);
-  const content = buildReportContent(
-    reportDate,
-    productName,
-    productUrl,
-    negativeList,
-    summaryByDimension
-  );
+  const content = buildReportContent(reportDate, productName, productUrl, negativeList, summaryByDimension);
 
   const reportId = insertReport(
     productId,
@@ -68,8 +56,7 @@ export async function runMonitorForProduct(product) {
     negativeList.length,
     negativeSummary,
     summaryByDimension,
-    content,
-    db
+    content
   );
 
   return {
@@ -81,13 +68,19 @@ export async function runMonitorForProduct(product) {
   };
 }
 
-/**
- * 执行全部商品的每日监测
- */
-export async function runDailyMonitor() {
-  const db = getDb();
-  const products = listProducts(db);
-  const results = [];
+export interface DailyMonitorResultItem {
+  ok: boolean;
+  productId?: number;
+  error?: string;
+  snapshotId?: number | null;
+  reportId?: number | null;
+  negativeCount?: number;
+  totalComments?: number;
+}
+
+export async function runDailyMonitor(): Promise<DailyMonitorResultItem[]> {
+  const products = listProducts();
+  const results: DailyMonitorResultItem[] = [];
 
   for (const product of products) {
     try {
@@ -97,7 +90,7 @@ export async function runDailyMonitor() {
       results.push({
         ok: false,
         productId: product.id,
-        error: err.message,
+        error: err instanceof Error ? err.message : String(err),
       });
     }
   }

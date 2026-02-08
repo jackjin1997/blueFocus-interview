@@ -1,7 +1,8 @@
 /**
  * AI 分析用 prompt 模板
- * 用于电商评论情感分析 + 关键问题维度提取（质量、服务、物流、价格）
  */
+
+import type { Comment } from "../types.js";
 
 export const SYSTEM_PROMPT = `你是一个电商评论分析助手。你的任务是对用户提供的商品评论进行：
 1. 情感判断：对每条评论判断为 正面 / 负面 / 中性。
@@ -20,7 +21,7 @@ export const SYSTEM_PROMPT = `你是一个电商评论分析助手。你的任�
 
 请严格按照 JSON 格式输出，不要输出其他说明文字。`;
 
-export function buildBatchCommentPrompt(comments) {
+export function buildBatchCommentPrompt(comments: Comment[]): string {
   const list = comments
     .slice(0, 50)
     .map((c, i) => `[${i + 1}] (评分:${c.rating}) ${c.comment_text}`)

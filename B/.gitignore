@@ -1,0 +1,12 @@
+# Dependencies & build
+node_modules/
+dist/
+
+# Env
+.env
+.env.local
+
+# SQLite (optional)
+# data/*.db
+# data/*.db-wal
+# data/*.db-shm
