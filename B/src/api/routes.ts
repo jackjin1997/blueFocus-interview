@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import type { FastifyInstance } from "fastify";
 import {
   listProducts,
   addProduct,
@@ -9,116 +9,93 @@ import {
   getTrends,
 } from "../db/schema.js";
 import { runDailyMonitor } from "../jobs/dailyMonitor.js";
-import { wrapHandler } from "./wrapHandler.js";
 import { parseOptionalId, parseLimit, parseDays, parseIdParam } from "./queryHelpers.js";
 import { MSG_NOT_FOUND, MSG_PRODUCT_URL_EXISTS, MSG_PRODUCT_URL_REQUIRED } from "../constants.js";
 
-const router = Router();
+type BodyAddProduct = { product_url?: string; name?: string };
+type ParamsId = { id?: string };
+type QueryReports = { product_id?: string; limit?: string };
+type QueryTrends = { product_id?: string; days?: string };
 
-router.get(
-  "/products",
-  wrapHandler((_req, res) => {
+export default async function apiRoutes(app: FastifyInstance): Promise<void> {
+  app.setErrorHandler((err, request, reply) => {
+    const message = err?.message ?? String(err);
+    const code = (err as { statusCode?: number })?.statusCode ?? 500;
+    reply.status(code).send({ success: false, error: message });
+  });
+
+  app.get("/products", async (_request, reply) => {
     const rows = listProducts();
-    res.json({ success: true, data: rows });
-  })
-);
+    return reply.send({ success: true, data: rows });
+  });
 
-router.post(
-  "/products",
-  wrapHandler((req, res) => {
-    const { product_url, name } = req.body ?? {};
+  app.post<{ Body: BodyAddProduct }>("/products", async (request, reply) => {
+    const { product_url, name } = request.body ?? {};
     if (!product_url || typeof product_url !== "string" || !product_url.trim()) {
-      res.status(400).json({ success: false, error: MSG_PRODUCT_URL_REQUIRED });
-      return;
+      return reply.status(400).send({ success: false, error: MSG_PRODUCT_URL_REQUIRED });
     }
     try {
       const id = addProduct(product_url.trim(), name?.trim() ?? null);
       const product = getProduct(id);
-      res.status(201).json({ success: true, data: product });
+      return reply.status(201).send({ success: true, data: product });
     } catch (e) {
       const msg = (e as Error).message;
       if (msg.includes("UNIQUE")) {
-        res.status(409).json({ success: false, error: MSG_PRODUCT_URL_EXISTS });
-        return;
+        return reply.status(409).send({ success: false, error: MSG_PRODUCT_URL_EXISTS });
       }
       throw e;
     }
-  })
-);
+  });
 
-router.get(
-  "/products/:id",
-  wrapHandler((req, res) => {
-    const id = parseIdParam(req.params);
+  app.get<{ Params: ParamsId }>("/products/:id", async (request, reply) => {
+    const id = parseIdParam(request.params);
     if (id == null) {
-      res.status(400).json({ success: false, error: "Invalid id" });
-      return;
+      return reply.status(400).send({ success: false, error: "Invalid id" });
     }
     const product = getProduct(id);
     if (!product) {
-      res.status(404).json({ success: false, error: MSG_NOT_FOUND });
-      return;
+      return reply.status(404).send({ success: false, error: MSG_NOT_FOUND });
     }
-    res.json({ success: true, data: product });
-  })
-);
+    return reply.send({ success: true, data: product });
+  });
 
-router.delete(
-  "/products/:id",
-  wrapHandler((req, res) => {
-    const id = parseIdParam(req.params);
+  app.delete<{ Params: ParamsId }>("/products/:id", async (request, reply) => {
+    const id = parseIdParam(request.params);
     if (id == null) {
-      res.status(400).json({ success: false, error: "Invalid id" });
-      return;
+      return reply.status(400).send({ success: false, error: "Invalid id" });
     }
     deleteProduct(id);
-    res.json({ success: true });
-  })
-);
+    return reply.send({ success: true });
+  });
 
-router.get(
-  "/reports",
-  wrapHandler((req, res) => {
-    const productId = parseOptionalId(req.query.product_id);
-    const limit = parseLimit(req.query.limit, 100, 200);
+  app.get<{ Querystring: QueryReports }>("/reports", async (request, reply) => {
+    const productId = parseOptionalId(request.query?.product_id);
+    const limit = parseLimit(request.query?.limit, 100, 200);
     const rows = listReports(productId, limit);
-    res.json({ success: true, data: rows });
-  })
-);
+    return reply.send({ success: true, data: rows });
+  });
 
-router.get(
-  "/reports/:id",
-  wrapHandler((req, res) => {
-    const id = parseIdParam(req.params);
+  app.get<{ Params: ParamsId }>("/reports/:id", async (request, reply) => {
+    const id = parseIdParam(request.params);
     if (id == null) {
-      res.status(400).json({ success: false, error: "Invalid id" });
-      return;
+      return reply.status(400).send({ success: false, error: "Invalid id" });
     }
     const report = getReport(id);
     if (!report) {
-      res.status(404).json({ success: false, error: MSG_NOT_FOUND });
-      return;
+      return reply.status(404).send({ success: false, error: MSG_NOT_FOUND });
     }
-    res.json({ success: true, data: report });
-  })
-);
+    return reply.send({ success: true, data: report });
+  });
 
-router.get(
-  "/trends",
-  wrapHandler((req, res) => {
-    const productId = parseOptionalId(req.query.product_id);
-    const days = parseDays(req.query.days, 30, 365);
+  app.get<{ Querystring: QueryTrends }>("/trends", async (request, reply) => {
+    const productId = parseOptionalId(request.query?.product_id);
+    const days = parseDays(request.query?.days, 30, 365);
     const rows = getTrends(productId, days);
-    res.json({ success: true, data: rows });
-  })
-);
+    return reply.send({ success: true, data: rows });
+  });
 
-router.post(
-  "/monitor/run",
-  wrapHandler(async (_req, res) => {
+  app.post("/monitor/run", async (_request, reply) => {
     const results = await runDailyMonitor();
-    res.json({ success: true, data: results });
-  })
-);
-
-export default router;
+    return reply.send({ success: true, data: results });
+  });
+}

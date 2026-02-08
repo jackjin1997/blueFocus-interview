@@ -1,9 +1,10 @@
 import "dotenv/config";
-import express from "express";
+import Fastify from "fastify";
+import fastifyStatic from "@fastify/static";
 import cron from "node-cron";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import routes from "./api/routes.js";
+import apiRoutes from "./api/routes.js";
 import { initStorage } from "./db/schema.js";
 import { runDailyMonitor } from "./jobs/dailyMonitor.js";
 
@@ -27,18 +28,25 @@ async function runScheduledDailyMonitor(): Promise<void> {
 
 initStorage();
 
-const app = express();
-app.use(express.json());
-app.use("/api", routes);
+const app = Fastify({ logger: process.env.NODE_ENV !== "test" });
 
-const publicDir = getPublicDir();
-app.use(express.static(publicDir));
-app.get("/", (_req, res) => {
-  res.sendFile(join(publicDir, "index.html"));
+await app.register(fastifyStatic, {
+  root: getPublicDir(),
+  prefix: "/",
 });
+
+app.get("/", (_request, reply) => {
+  return reply.sendFile("index.html");
+});
+
+await app.register(apiRoutes, { prefix: "/api" });
 
 cron.schedule(CRON_DAILY, runScheduledDailyMonitor);
 
-app.listen(PORT, () => {
+try {
+  await app.listen({ port: PORT, host: "0.0.0.0" });
   console.log(`Server running at http://localhost:${PORT}`);
-});
+} catch (err) {
+  app.log.error(err);
+  process.exit(1);
+}
