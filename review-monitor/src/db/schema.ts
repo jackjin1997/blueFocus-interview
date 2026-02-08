@@ -215,18 +215,23 @@ export function listReports(productId: number | null, limit: number): ReportRow[
   return rows.slice(0, limit);
 }
 
-export function getReport(id: number): (ReportRow & { dimension_summary?: Record<string, number> }) | undefined {
+export interface ReportDetail extends Omit<ReportRow, "dimension_summary"> {
+  dimension_summary: Record<string, number> | string | null;
+}
+
+export function getReport(id: number): ReportDetail | undefined {
   const rStore = loadJson<ReportsStore>(REPORTS_FILE, DEFAULT_REPORTS_STORE);
   const pStore = loadJson<ProductsStore>(PRODUCTS_FILE, DEFAULT_PRODUCTS_STORE);
   const row = rStore.items.find((r) => r.id === id);
   if (!row) return undefined;
   const product = pStore.items.find((p) => p.id === row.product_id);
-  const out: ReportRow & { dimension_summary?: Record<string, number> } = enrichReportWithProduct(row, product);
+  const base = enrichReportWithProduct(row, product);
+  const out: ReportDetail = { ...base };
   if (row.dimension_summary) {
     try {
       out.dimension_summary = JSON.parse(row.dimension_summary) as Record<string, number>;
     } catch {
-      // keep as-is
+      // keep as raw string
     }
   }
   return out;

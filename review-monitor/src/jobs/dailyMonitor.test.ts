@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Product, Comment, NegativeComment, DimensionSummary } from "../types.js";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Product, NegativeComment, DimensionSummary } from "../types.js";
 
 const mockFetchComments = vi.fn();
 const mockAnalyzeComments = vi.fn();
@@ -15,12 +15,21 @@ vi.mock("../db/schema.js", () => ({
   insertReport: (...args: unknown[]) => mockInsertReport(...args),
 }));
 
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
+
 beforeEach(() => {
   mockFetchComments.mockReset();
   mockAnalyzeComments.mockReset();
   mockListProducts.mockReset();
   mockInsertSnapshot.mockReset();
   mockInsertReport.mockReset();
+  mockFetch.mockReset();
+  mockFetch.mockResolvedValue({ status: 200 });
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("dailyMonitor", () => {
@@ -119,5 +128,60 @@ describe("dailyMonitor", () => {
     expect(results[0].ok).toBe(false);
     expect(results[0].productId).toBe(3);
     expect(results[0].error).toContain("network error");
+  });
+
+  it("sendWebhookNotification does nothing when WEBHOOK_URL is empty", async () => {
+    delete process.env.WEBHOOK_URL;
+    const { sendWebhookNotification } = await import("./dailyMonitor.js");
+    await sendWebhookNotification({
+      event: "report_created",
+      productId: 1,
+      productName: "P",
+      productUrl: "https://example.com",
+      reportId: 1,
+      reportDate: "2024-01-15",
+      negativeCount: 2,
+      totalComments: 10,
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("sendWebhookNotification POSTs when WEBHOOK_URL is set", async () => {
+    process.env.WEBHOOK_URL = "https://hook.example.com/test";
+    mockFetch.mockResolvedValue({ status: 200 });
+    const { sendWebhookNotification } = await import("./dailyMonitor.js");
+    const payload = {
+      event: "report_created" as const,
+      productId: 1,
+      productName: "P",
+      productUrl: "https://example.com",
+      reportId: 1,
+      reportDate: "2024-01-15",
+      negativeCount: 2,
+      totalComments: 10,
+    };
+    await sendWebhookNotification(payload);
+    expect(mockFetch).toHaveBeenCalledWith("https://hook.example.com/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  });
+
+  it("sendWebhookNotification logs error when fetch throws", async () => {
+    process.env.WEBHOOK_URL = "https://hook.example.com/fail";
+    mockFetch.mockRejectedValue(new Error("connection refused"));
+    const { sendWebhookNotification } = await import("./dailyMonitor.js");
+    await sendWebhookNotification({
+      event: "report_created",
+      productId: 1,
+      productName: "P",
+      productUrl: "https://example.com",
+      reportId: 1,
+      reportDate: "2024-01-15",
+      negativeCount: 0,
+      totalComments: 5,
+    });
+    expect(mockFetch).toHaveBeenCalled();
   });
 });

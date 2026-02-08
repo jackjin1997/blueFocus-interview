@@ -5,6 +5,32 @@ import { listProducts, insertSnapshot, insertReport } from "../db/schema.js";
 import { todayDateString, dateRangeForToday } from "../utils/date.js";
 import type { Product, Comment, NegativeComment, DimensionSummary } from "../types.js";
 
+export interface WebhookPayload {
+  event: "report_created";
+  productId: number;
+  productName: string | null;
+  productUrl: string;
+  reportId: number;
+  reportDate: string;
+  negativeCount: number;
+  totalComments: number;
+}
+
+export async function sendWebhookNotification(payload: WebhookPayload): Promise<void> {
+  const url = process.env.WEBHOOK_URL ?? "";
+  if (!url) return;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    console.log(`[webhook] POST ${url} -> ${res.status}`);
+  } catch (err) {
+    console.error("[webhook] failed:", err instanceof Error ? err.message : String(err));
+  }
+}
+
 export interface MonitorProductResult {
   productId: number;
   snapshotId: number | null;
@@ -46,7 +72,7 @@ function persistMonitorResult(
     reportDate,
     negativeList.length,
     negativeSummary,
-    summaryByDimension,
+    summaryByDimension as Record<string, number>,
     content
   );
   return { snapshotId, reportId };
@@ -59,6 +85,18 @@ export async function runMonitorForProduct(product: Product): Promise<MonitorPro
   }
   const { comments, negativeList, summaryByDimension } = analyzed;
   const { snapshotId, reportId } = persistMonitorResult(product, comments, negativeList, summaryByDimension);
+
+  await sendWebhookNotification({
+    event: "report_created",
+    productId: product.id,
+    productName: product.name,
+    productUrl: product.product_url,
+    reportId,
+    reportDate: todayDateString(),
+    negativeCount: negativeList.length,
+    totalComments: comments.length,
+  });
+
   return {
     productId: product.id,
     snapshotId,
@@ -76,6 +114,7 @@ export interface DailyMonitorResultItem {
   reportId?: number | null;
   negativeCount?: number;
   totalComments?: number;
+  message?: string;
 }
 
 export async function runDailyMonitor(): Promise<DailyMonitorResultItem[]> {

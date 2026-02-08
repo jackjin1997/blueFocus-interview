@@ -8,7 +8,7 @@ flowchart LR
     User[用户]
   end
   subgraph app [应用层]
-    API[Express API]
+    API[Fastify API]
     Cron[定时任务]
   end
   subgraph core [核心]
@@ -17,8 +17,11 @@ flowchart LR
     Report[报告生成]
   end
   subgraph storage [存储]
-    DB[(SQLite)]
+    DB[(JSON Store)]
     MockData[Mock 评论 JSON]
+  end
+  subgraph push [推送]
+    WH[Webhook]
   end
   User --> API
   User --> Cron
@@ -28,16 +31,17 @@ flowchart LR
   Cron --> AI
   AI --> Report
   Report --> DB
+  Report --> WH
   API --> DB
 ```
 
 - **用户**：通过 Web 页面添加监测商品、触发监测、查看报告与趋势。
-- **Express API**：提供商品 CRUD、报告列表/详情、趋势、触发监测接口。
+- **Fastify API**：提供商品 CRUD、报告列表/详情、趋势、触发监测接口。
 - **定时任务**：每日 8:00 对已登记商品执行拉取 → 分析 → 写报告。
 - **Mock 爬虫**：从本地 `data/mockComments.json` 按 `product_url`/`date_range` 返回评论，无需真实爬虫。
 - **LangChain 分析**：对评论做情感分析（正面/负面/中性）与问题维度提取（质量、服务、物流、价格）。
 - **报告生成**：组装负面摘要、维度分布、可读报告内容写入 DB。
-- **SQLite**：存储商品、评论快照、报告及趋势查询。
+- **JSON 文件存储**：以 `data/products.json`、`data/snapshots.json`、`data/reports.json` 持久化商品、评论快照、报告，支持趋势查询。
 
 ## 2. 数据流程
 
@@ -49,6 +53,7 @@ sequenceDiagram
   participant Mock
   participant AI
   participant DB
+  participant Webhook
 
   User->>API: 添加商品链接
   API->>DB: 写入 products
@@ -61,6 +66,7 @@ sequenceDiagram
     Cron->>AI: analyzeComments(comments)
     AI-->>Cron: negativeList, summaryByDimension
     Cron->>DB: insertSnapshot, insertReport
+    Cron->>Webhook: POST 报告摘要（若已配置 WEBHOOK_URL）
   end
 
   User->>API: 查看报告列表 / 报告详情 / 趋势
@@ -93,7 +99,7 @@ sequenceDiagram
 - **情感**：以用户表达的不满/满意倾向为主；评分 1–2 多为负面参考，但不唯一依据，以评论文本为准。
 - **维度**：仅对负面评论标注维度；一条评论可属多个维度（如既抱怨质量又抱怨物流）。
 
-实现位置：`src/ai/prompts.js`（模板）、`src/ai/analyzer.js`（调用 LangChain ChatOpenAI、解析 JSON）。
+实现位置：`src/ai/prompts.ts`（模板）、`src/ai/analyzer.ts`（调用 LangChain ChatOpenAI、解析 JSON）。
 
 ## 4. 数据库设计
 
@@ -148,11 +154,26 @@ sequenceDiagram
 
 ---
 
-## 5. 报告推送扩展
+## 5. 报告推送
 
-当前版本通过 **Web 报告列表 + 在线查看/下载** 方式交付报告。若需「推送给客户」，可在现有架构上扩展：
+每次报告生成后，系统支持通过 **Webhook** 主动将报告摘要推送给客户：
 
-- **邮件推送**：定时任务或报告生成后调用邮件服务，将报告内容或链接发送至配置邮箱。
-- **Webhook**：报告生成后向客户配置的 URL 发送 POST，携带报告摘要或链接。
+- 在 `.env` 中配置 `WEBHOOK_URL`（如 `https://your-server.com/webhook/report`），系统会在 `jobs/dailyMonitor.ts` 中 `persistMonitorResult()` 之后自动向该地址发送 HTTP POST，携带以下 JSON 字段：
 
-以上扩展点可在 `jobs/dailyMonitor.js` 报告写入 DB 之后增加调用，配置项（邮箱、Webhook URL）建议放在环境变量或配置表中，并在 README 中说明。
+```json
+{
+  "event": "report_created",
+  "productId": 1,
+  "productName": "商品名称",
+  "productUrl": "https://...",
+  "reportId": 10,
+  "reportDate": "2024-12-01",
+  "negativeCount": 5,
+  "totalComments": 120
+}
+```
+
+- 若 `WEBHOOK_URL` 未配置或为空，推送自动跳过，不影响正常流程。
+- Webhook 推送失败仅打印日志，不阻断监测流程。
+
+**扩展**：如需邮件推送，可在 `sendWebhookNotification()` 同级位置增加邮件发送逻辑，配置项放在环境变量中。

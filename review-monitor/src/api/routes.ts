@@ -18,8 +18,8 @@ type QueryReports = { product_id?: string; limit?: string };
 type QueryTrends = { product_id?: string; days?: string };
 
 export default async function apiRoutes(app: FastifyInstance): Promise<void> {
-  app.setErrorHandler((err, request, reply) => {
-    const message = err?.message ?? String(err);
+  app.setErrorHandler((err, _request, reply) => {
+    const message = (err as Error)?.message ?? String(err);
     const code = (err as { statusCode?: number })?.statusCode ?? 500;
     reply.status(code).send({ success: false, error: message });
   });

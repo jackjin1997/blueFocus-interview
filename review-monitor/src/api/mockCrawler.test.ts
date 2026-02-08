@@ -30,7 +30,7 @@ describe("mockCrawler", () => {
         helpful_count: 1,
       },
     ];
-    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockComments) as unknown as Buffer);
+    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockComments) as string);
 
     const { fetchComments } = await import("./mockCrawler.js");
 
@@ -55,7 +55,7 @@ describe("mockCrawler", () => {
         helpful_count: 0,
       },
     ];
-    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockComments) as unknown as Buffer);
+    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockComments) as string);
 
     const { fetchComments } = await import("./mockCrawler.js");
     const result = await fetchComments();
@@ -75,7 +75,7 @@ describe("mockCrawler", () => {
         helpful_count: 0,
       },
     ];
-    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockComments) as unknown as Buffer);
+    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockComments) as string);
 
     const { fetchComments } = await import("./mockCrawler.js");
     const result = await fetchComments({

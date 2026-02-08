@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+.env
+.env.local
+*.md
+.husky
+.prettierrc
+.prettierignore
+eslint.config.js
+commitlint.config.js
+vitest.config.ts
+scripts/

@@ -1,12 +1,13 @@
 # Dependencies & build
 node_modules/
 dist/
+coverage/
 
 # Env
 .env
 .env.local
 
-# SQLite (optional)
-# data/*.db
-# data/*.db-wal
-# data/*.db-shm
+# Runtime data (products, snapshots, reports JSON are generated at runtime)
+data/products.json
+data/snapshots.json
+data/reports.json

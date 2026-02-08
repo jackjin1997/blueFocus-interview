@@ -10,6 +10,7 @@
 - **自动化监测**：每日定时（默认 8:00）拉取评论并分析；也可在页面上「执行一次监测」立即跑全量。
 - **智能分析**：使用 LangChain + OpenAI 对评论做情感判断（正面/负面/中性）及问题维度提取（质量、服务、物流、价格）。
 - **报告与趋势**：查看历史报告列表、报告详情（含负面摘要与维度分布）、按日聚合的负面数趋势。
+- **报告推送**：每次报告生成后，若配置了 `WEBHOOK_URL`，系统自动向该地址 POST 报告摘要（商品、日期、负面数、报告 ID），实现客户主动接收通知。
 
 ## 环境要求
 
@@ -105,6 +106,7 @@ pnpm start
 | PORT | HTTP 端口 | 3000 |
 | CRON_DAILY | 每日监测 cron 表达式 | 0 8 * * * |
 | DATA_DIR | 数据目录（商品/快照/报告 JSON） | ./data |
+| WEBHOOK_URL | 报告推送 Webhook 地址（可选，配置后每次生成报告自动 POST 摘要） | - |
 
 Mock 评论数据来自 `data/mockComments.json`，无需配置；如需更换数据，直接替换该 JSON 文件即可（格式需符合题目协议：`comment_id, user_name, rating, comment_text, comment_time, helpful_count`）。
 
@@ -132,5 +134,33 @@ Mock 评论数据来自 `data/mockComments.json`，无需配置；如需更换�
 
 ## 部署说明
 
-- 本地：在 `review-monitor` 目录执行 `pnpm install`、`pnpm build`、`pnpm start`，通过 `http://localhost:PORT` 访问。
-- 若部署到云主机：使用进程守护（如 pm2）或容器运行 `node dist/index.js`（需先执行 `pnpm build`），并配置 `OPENAI_API_KEY` 与 `PORT`；如需公网访问，请自行配置反向代理与 HTTPS。
+### 本地运行
+
+在 `review-monitor` 目录执行 `pnpm install`、`pnpm build`、`pnpm start`，通过 `http://localhost:PORT` 访问。
+
+### Docker 部署
+
+```bash
+cd review-monitor
+
+# 构建镜像
+docker build -t blufocus-review-monitor .
+
+# 运行容器
+docker run -d \
+  --name review-monitor \
+  -p 3000:3000 \
+  -e OPENAI_API_KEY=sk-your-key \
+  -v review-monitor-data:/app/data \
+  blufocus-review-monitor
+```
+
+浏览器访问 `http://localhost:3000`（或部署主机的公网 IP/域名）。
+
+- `-v review-monitor-data:/app/data`：持久化商品、快照、报告数据。
+- 可通过 `-e` 传入其他环境变量（`PORT`、`CRON_DAILY`、`WEBHOOK_URL`）。
+
+### 云主机部署
+
+- 使用进程守护（如 pm2）或上述 Docker 方式运行 `node dist/index.js`。
+- 配置 `OPENAI_API_KEY` 与 `PORT`；如需公网访问，请自行配置反向代理与 HTTPS。
