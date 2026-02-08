@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
-[ -d B ] && cd B
+[ -d review-monitor ] && cd review-monitor
 pnpm exec node scripts/check-secrets.mjs
 pnpm exec lint-staged

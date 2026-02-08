@@ -21,7 +21,7 @@
 ### 1. 安装依赖
 
 ```bash
-cd B   # 或从仓库根目录进入 Review Monitor 目录
+cd review-monitor   # 从仓库根目录进入本模块
 pnpm install
 ```
 
@@ -112,9 +112,9 @@ Mock 评论数据来自 `data/mockComments.json`，无需配置；如需更换�
 
 - **Prettier**：`pnpm format`（格式化）、`pnpm format:check`（仅检查）。
 - **ESLint**：`pnpm lint`、`pnpm lint:fix`（仅针对 `src/` 内 TypeScript）。
-- **Git Hooks（Husky）**：若仓库根目录为 `blufocus`（B 为子目录），需在根目录执行一次以启用 hooks：
+- **Git Hooks（Husky）**：若仓库根目录为 `blufocus`（本模块为子目录 `review-monitor`），需在根目录执行一次以启用 hooks：
   ```bash
-  node --input-type=module -e "import('./B/node_modules/husky/index.js').then(m=>m.default('B/.husky'))"
+  node --input-type=module -e "import('./review-monitor/node_modules/husky/index.js').then(m=>m.default('review-monitor/.husky'))"
   ```
   - **pre-commit**：先执行 `scripts/check-secrets.mjs`（防止提交密钥等敏感信息），再执行 **lint-staged**（对暂存区 `*.ts,*.js,*.json` 跑 Prettier + ESLint --fix）。
   - **commit-msg**：使用 **commitlint**（Conventional Commits），如 `feat: add api`、`fix: typo`。
@@ -131,5 +131,5 @@ Mock 评论数据来自 `data/mockComments.json`，无需配置；如需更换�
 
 ## 部署说明
 
-- 本地：在本模块（B）目录执行 `pnpm install`、`pnpm build`、`pnpm start`，通过 `http://localhost:PORT` 访问。
+- 本地：在 `review-monitor` 目录执行 `pnpm install`、`pnpm build`、`pnpm start`，通过 `http://localhost:PORT` 访问。
 - 若部署到云主机：使用进程守护（如 pm2）或容器运行 `node dist/index.js`（需先执行 `pnpm build`），并配置 `OPENAI_API_KEY` 与 `PORT`；如需公网访问，请自行配置反向代理与 HTTPS。
